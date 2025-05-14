@@ -1,44 +1,23 @@
-use actix_web::{get, HttpRequest, HttpResponse, Responder, web, HttpMessage};
-use sea_orm::{EntityTrait, ColumnTrait, QueryFilter};
-use crate::entities::users;
-use crate::http::middlewares::auth::Claims;
-use crate::http::response::ApiResponse;
+use actix_web::{get, HttpRequest, Responder, web};
+use crate::http::controllers::base_controller::{BaseController, Controller};
 
 #[get("/user/details")]
 pub async fn user_details(
     req: HttpRequest,
     db: web::Data<sea_orm::DatabaseConnection>,
 ) -> impl Responder {
-    if let Some(claims) = req.extensions().get::<Claims>() {
-        let user_id: i32 = claims.sub.parse().unwrap();
 
-        let user = users::Entity::find()
-            .filter(users::Column::Id.eq(user_id))
-            .one(db.get_ref())
-            .await;
+    let claims = Controller::get_claims(&req);
+    if claims.is_none() {
+        return Controller::unauthorized("Unauthorized");
+    }
 
-        match user {
-            Ok(Some(user)) => HttpResponse::Ok().json(ApiResponse {
-                success: true,
-                message: "User details retrieved successfully".to_string(),
-                data: Some(user),
-            }),
-            Ok(None) => HttpResponse::NotFound().json(ApiResponse::<()> {
-                success: false,
-                message: "User not found".to_string(),
-                data: None,
-            }),
-            Err(_) => HttpResponse::InternalServerError().json(ApiResponse::<()> {
-                success: false,
-                message: "Error retrieving user details".to_string(),
-                data: None,
-            }),
-        }
-    } else {
-        HttpResponse::Unauthorized().json(ApiResponse::<()> {
-            success: false,
-            message: "Unauthorized".to_string(),
-            data: None,
-        })
+    let user_id: i32 = claims.unwrap().sub.parse().unwrap();
+    match Controller::get_user_by_id(user_id, db.get_ref()).await {
+        Ok(user) => Controller::ok_with_data(
+            "User details retrieved successfully",
+            Some(user),
+        ),
+        Err(err_response) => err_response,
     }
 }

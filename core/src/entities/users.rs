@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use sea_orm::{DatabaseConnection, EntityTrait, QueryFilter};
+use sea_orm::{DatabaseConnection, EntityTrait};
 use crate::traits::placeable::Placeable;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
@@ -45,7 +45,7 @@ impl Placeable for Model {
         user.ok_or_else(|| "User not found".into())
     }
 
-    async fn get_value(&self, db: &DatabaseConnection, attr: &str) -> Option<String> {
+    async fn get_value(&self, _: &DatabaseConnection, attr: &str) -> Option<String> {
         match attr {
             "first_name" => Some(self.first_name.clone()),
             "last_name" => Some(self.last_name.clone()),

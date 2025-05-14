@@ -1,6 +1,6 @@
 use crate::enums::user_type::UserType;
-use actix_web::{post, web, HttpResponse, Responder};
-use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, InsertResult, QueryFilter, Set};
+use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
+use sea_orm::{DatabaseConnection, DbErr, EntityTrait, InsertResult, QueryFilter, Set};
 use serde::{Deserialize};
 use chrono::{Duration, Utc};
 use sea_orm::ColumnTrait;
@@ -14,6 +14,7 @@ use actix_web::web::Data;
 use crate::entities::{passwords, user_wallet, users};
 use crate::entities::user_wallet::ActiveModel;
 use crate::entities::users::Model;
+use crate::http::controllers::base_controller::{BaseController, Controller};
 use crate::web3::wallet_handler;
 
 #[derive(Deserialize)]
@@ -216,35 +217,6 @@ pub async fn register_user(
     })
 }
 
-async fn generate_password(
-    db: &Data<DatabaseConnection>,
-    password: String,
-    user_id: i32,
-) -> Result<(), HttpResponse> {
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-    let password_hash = argon2
-        .hash_password(password.as_bytes(), &salt)
-        .unwrap()
-        .to_string();
-
-    let new_password = passwords::ActiveModel {
-        user_id: Set(user_id),
-        password_hash: Set(password_hash),
-        created_at: Set(Utc::now().into()),
-        ..Default::default()
-    };
-
-    match passwords::Entity::insert(new_password).exec(db.get_ref()).await {
-        Ok(_) => Ok(()),
-        Err(_) => Err(HttpResponse::InternalServerError().json(ApiResponse::<()> {
-            success: false,
-            message: "Error saving password.".to_string(),
-            data: None,
-        })),
-    }
-}
-
 #[post("/login")]
 pub async fn login_user(
     db: Data<DatabaseConnection>,
@@ -303,4 +275,21 @@ pub async fn login_user(
             data: None,
         }),
     }
+}
+
+#[post("/logout")]
+pub async fn logout_user(req: HttpRequest) -> impl Responder {
+    let auth_header = req
+        .headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok());
+
+    if let Some(auth_header) = auth_header {
+        if auth_header.starts_with("Bearer ") {
+            let _token = &auth_header[7..];
+            return Controller::ok_empty("Logout successful.");
+        }
+    }
+
+    Controller::bad_request("Authorization token missing or malformed.")
 }
