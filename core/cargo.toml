@@ -1,0 +1,37 @@
+[package]
+name = "core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4"
+actix-cors = "0.6"
+actix-web-actors = "4"
+actix-ws = { version = "0.3.0" }
+actix = "0.13"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+jsonwebtoken = "8"   # For handling JWT tokens
+futures = "0.3"
+oauth2 = "4"         # For handling OAuth2 flows
+sea-orm = { version = "0.10.7", features = ["sqlx-mysql", "runtime-actix-native-tls"] }
+async-std = "1"      # For asynchronous runtime
+dotenvy = "0.15"     # For loading environment variables
+tracing = "0.1"      # For logging and tracing
+tracing-subscriber = "0.3" # For logging and tracing
+chrono = "0.4.38"
+argon2 = "0.3"
+rand = "0.8"
+tokio = "1.40.0"
+futures-util = "0.3.30"
+strum = "0.24.1"
+strum_macros = "0.24.1"
+lettre = "0.10.0"
+
+base64 = "0.20.0"
+uuid = "1.10.0"        # For encoding/decoding encrypted data as base64
+env_logger = "0.11.5"
+log = "0.4.22"
+sea-query = "0.27.2"
+sqlx = "0.6.3"
+lazy_static = "1.5.0"

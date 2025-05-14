@@ -1,0 +1,27 @@
+[package]
+name = "proctodot-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Third party packages
+actix-web = "4"
+actix-cors = "0.6"
+actix-web-actors = "4"
+actix-ws = { version = "0.3.0" }
+actix = "0.13"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+dotenvy = "0.15"
+sea-orm = { version = "0.10.7", features = ["sqlx-mysql", "runtime-actix-native-tls"] }
+sea-orm-migration = "0.10.7"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Core package
+core = { path = "core" }
+env_logger = "0.11.5"
+
+[dev-dependencies]
+listenfd = "0.3"
