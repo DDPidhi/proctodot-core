@@ -26,7 +26,7 @@ lazy_static! {
 /// Custom message type for WebSocket text messages
 #[derive(Debug, ActixMessage)]
 #[rtype(result = "()")]
-pub struct TextMessage(pub String, pub String);
+pub struct TextMessage(pub String, pub String, pub String);
 
 pub struct WebSocketActor {
     ws_server: Arc<Mutex<WebSocketServer>>,
@@ -62,7 +62,7 @@ impl Actor for WebSocketActor {
         ctx.spawn(wrap_future(async move {
             while let Some(msg) = rx.recv().await {
                 if let Ok(json) = serde_json::from_str::<Value>(&msg.clone()) {
-                    if let (Some(event), Some(message)) = (json.get("event"), json.get("message")) {
+                    if let (Some(event), Some(message), Some(senderId)) = (json.get("event"), json.get("message"), json.get("sender_id")) {
                         println!(
                             "📨 Received message to send to WebSocket: {} and Event: {}",
                             message,
@@ -71,7 +71,8 @@ impl Actor for WebSocketActor {
                         addr.do_send(
                             TextMessage(
                                 message.as_str().unwrap_or("").to_string(),
-                                event.as_str().unwrap_or("").to_string()
+                                event.as_str().unwrap_or("").to_string(),
+                                senderId.as_str().unwrap_or("").to_string(),
                             )
                         );
                     }
@@ -112,10 +113,11 @@ impl Handler<TextMessage> for WebSocketActor {
     type Result = ();
 
     fn handle(&mut self, msg: TextMessage, ctx: &mut Self::Context) {
-        println!("📥 Received TextMessage for WebSocketActor: {}", msg.0);
+        println!("📥 Received TextMessage for WebSocketActor: {:?}", msg);
         let json_payload = serde_json::json!({
             "event": msg.1,
-            "message": msg.0
+            "message": msg.0,
+            "sender_id": msg.2,
         });
         ctx.text(json_payload.to_string());
     }
@@ -129,30 +131,24 @@ impl StreamHandler<Result<Message, ProtocolError>> for WebSocketActor {
 
                 if let Ok(json) = serde_json::from_str::<Value>(&text) {
                     if let (Some(event), Some(message), Some(participant)) = (json.get("event"), json.get("message"), json.get("participant").and_then(|v| v.as_i64())) {
-                        if event == "message" {
-                            let ws_server = self.ws_server.lock().unwrap();
-                            let recipient_id = if self.user_type == UserType::Member.to_string() {
-                                ws_server.get_proctor_id()
-                            } else {
-                                participant as i32
-                            };
+                        let ws_server = self.ws_server.lock().unwrap();
+                        let recipient_id = if self.user_type == UserType::Member.to_string() {
+                            ws_server.get_proctor_id()
+                        } else {
+                            participant as i32
+                        };
 
-                            println!(
-                                "📨 Forwarding message from user_id: {} to recipient_id: {}",
-                                self.user_id, recipient_id
-                            );
+                        println!(
+                            "📨 Forwarding message from user_id: {} to recipient_id: {}",
+                            self.user_id, recipient_id
+                        );
 
-                            let room_id = self.room_id.clone();
-                            let sender_id = self.user_id.to_string();
-                            let msg_text = message.as_str().unwrap_or("").to_string();
-                            let db = self.db_pool.clone();
-
-                            ws_server.send_to(
-                                recipient_id,
-                                message.as_str().unwrap_or("").to_string(),
-                                event.as_str().unwrap_or("").to_string(),
-                            );
-                        }
+                        ws_server.send_to(
+                            self.user_id,
+                            recipient_id,
+                            message.as_str().unwrap_or("").to_string(),
+                            event.as_str().unwrap_or("").to_string(),
+                        );
                     }
                 }
             }

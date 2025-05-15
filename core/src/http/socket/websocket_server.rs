@@ -56,15 +56,16 @@ impl WebSocketServer {
     }
 
     /// Sends a message to the appropriate recipient based on the recipient ID
-    pub fn send_to(&self, recipient_id: i32, message: String, event: String) {
+    pub fn send_to(&self, sender_id: i32, recipient_id: i32, message: String, event: String) {
         let json_payload = serde_json::json!({
             "event": event,
-            "message": message
+            "message": message,
+            "sender_id": sender_id.to_string(),
         });
 
         if recipient_id == self.proctor_id {
             if let Some(proctor_sender) = &self.proctor {
-                println!("📤 Sending message to proctor with ID: {}", self.proctor_id);
+                println!("📤 Sending message to proctor with ID: {}, sender: {}", self.proctor_id, sender_id);
                 if proctor_sender.send(json_payload.to_string()).is_err() {
                     println!("❌ Failed to send message to proctor: Channel closed");
                 }
