@@ -2,6 +2,7 @@ use actix_web::web;
 use crate::http::middlewares::auth::AuthMiddleware;
 use crate::http::controllers::auth_controller::{login_user, logout_user, register_user};
 use crate::http::controllers::user_controller::user_details;
+use crate::http::socket::websocket_controller::websocket_index;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(register_user);
@@ -13,5 +14,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .service(logout_user)
             // User Controller apis
             .service(user_details)
+
+            .route("/ws/chat/{room_id}", web::get().to(websocket_index)),
     );
 }
