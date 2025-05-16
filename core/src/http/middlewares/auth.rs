@@ -66,8 +66,22 @@ where
         let db_conn = req.app_data::<web::Data<DatabaseConnection>>().cloned();
 
         Box::pin(async move {
-            if let Some(auth_header) = req.headers().get("Authorization") {
-                let token = auth_header.to_str().unwrap_or("").replace("Bearer ", "");
+            // Check for token in Authorization header or query parameter
+            let token = if let Some(auth_header) = req.headers().get("Authorization") {
+                Some(auth_header.to_str().unwrap_or("").replace("Bearer ", ""))
+            } else {
+                // Check for token in query parameters
+                let query = req.query_string();
+                if let Some(token_value) = query.split('&')
+                    .find(|pair| pair.starts_with("token=") || pair.starts_with("authorization="))
+                    .and_then(|pair| pair.split('=').nth(1)) {
+                    Some(token_value.to_string())
+                } else {
+                    None
+                }
+            };
+
+            if let Some(token) = token {
                 let secret = std::env::var("SECRET_KEY").expect("SECRET_KEY must be set");
                 let key = DecodingKey::from_secret(secret.as_ref());
 
@@ -137,7 +151,7 @@ where
                     }
                 }
             } else {
-                // No Authorization header provided
+                // No token provided in header or query params
                 let res = HttpResponse::Unauthorized()
                     .json(ApiResponse::<()> {
                         success: false,
